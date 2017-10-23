@@ -1,7 +1,10 @@
 #!/bin/bash
 declare libc
 declare proca
-#we use strings and readlink; can't remember if they are standard
+#no readlink or strings any more!
+#we do use ss though.
+#i should probably add a function to prefer ss over netstat and allow the use of both
+#effort though
 
 
 banner() {
@@ -65,7 +68,7 @@ declare -a procs
 echo "[*] Checking for processes with deleted executables."
 IFS=' ' read -r -a procs <<< $proca
 for i in "${procs[@]}"; do
-	if readlink /proc/$i/exe | grep -q deleted; then
+	if file /proc/$i/exe | grep -q deleted; then
 		echo "[!] PID $i is missing its executable."
 		ps -p$i --no-header -o "%a"
 	fi
