@@ -92,9 +92,9 @@ fi
 }
 
 oddexecs() {
-	echo "[*] Finding weird executables in places they shouldn't be."
-	find /tmp/ -executable -type f 2>/dev/null
-	find /var/tmp -executable -type f 2>/dev/null
+echo "[*] Finding weird executables in places they shouldn't be."
+find /tmp/ -executable -type f 2>/dev/null
+find /var/tmp -executable -type f 2>/dev/null
 }
 
 extraroot() {
@@ -157,7 +157,7 @@ declare -a procs
 echo "[*] Checking for UPX'd binaries."
 IFS=' ' read -r -a procs <<< $proca
 for i in "${procs[@]}"; do
-	if strings "/proc/$i/exe" 2>/dev/null | tail -n2 | grep -q "UPX!"; then
+	if [ $(cat "/proc/$i/exe" 2>/dev/null | tr -dc '[:print:]' | grep -oi "UPX\!" | wc -l) -gt 1 ] ; then
 		echo "[*] Proc $i is compressed with UPX!"
 		ps --no-header -p$i -wwo "%p %u %a"
 	fi
