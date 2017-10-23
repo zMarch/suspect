@@ -164,6 +164,12 @@ for i in "${procs[@]}"; do
 done
 }
 
+modified() {
+echo "[*] Checking for recent files in system locations..."
+echo "[*] This may produce a lot of output."
+find /usr/bin/ /bin/ /lib/ /lib64/ /usr/lib/ /usr/lib64/ /etc/ /tmp/ -mtime -7 -type f 2>/dev/null
+}
+
 main() {
 banner
 echo "[*] Checking for suspicious behaviour."
@@ -180,6 +186,7 @@ daemonshells
 networks
 authkeys
 upxcheck
+modified
 }
 
 main
