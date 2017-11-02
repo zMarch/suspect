@@ -167,8 +167,23 @@ for i in "${procs[@]}"; do
 done
 }
 
+ldinfect() {
+declare libs
+declare -a liba
+
+echo "[*] Testing for library-based stat hooks..."
+libs=$(cat /proc/self/maps | grep "xp 0" | grep -v `which cat`| grep -v "00\:00\ 0" | awk -F "fd:0" '{print $2}' | tr -d ' ' | awk -F "[0-9][0-9][0-9]/" '{print "/"$2}')
+IFS=' ' read -r -a liba <<< $libs
+for i in "${liba[@]}"; do
+        if [ ! -f $i ]; then
+                echo "[!] cat is loading a library that doesn't exist!"
+                echo "[!] Investigate $i further".
+        fi
+done
+}
+
 modified() {
-echo "[*] Checking for recent files in system locations..."
+echo "[*] Checking for recent files in system locations."
 echo "[*] This may produce a lot of output."
 find /usr/bin/ /bin/ /lib/ /lib64/ /usr/lib/ /usr/lib64/ /etc/ /tmp/ -mtime -7 -type f 2>/dev/null
 }
@@ -181,6 +196,7 @@ proca=$(ps -wweo "%p")
 libc=ldd $(which id) | awk -F " " '{print $3}' | grep --color=never libc
 modulecheck
 missingproc
+ldinfect
 changingproc
 oddexecs
 extraroot
