@@ -49,11 +49,11 @@ declare -i r1
 declare -i r2
 echo "[*] Investigating ld.so.preload file."
 cat /etc/ld.so.preload 2>/dev/null
-r1=$?
+r1=$(echo $?)
 LD_PRELOAD=$libc cat /etc/ld.so.preload 2>/dev/null
-r2=$?
+r2=$(echo $?)
 if [ $r1 -ne $r2 ]; then
-	echo "[!] /etc/ld.so.preload is being hidden!"
+	echo "[!] /etc/ld.so.preload is being hidden, or something is going on!"
 	else
 		echo "[*] /etc/ld.so.preload is either non-existent or not hidden."
 	if [ -f "/etc/ld.so.preload" ]; then
@@ -197,6 +197,7 @@ libc=ldd $(which id) | awk -F " " '{print $3}' | grep --color=never libc
 modulecheck
 missingproc
 ldinfect
+preloadcheck
 changingproc
 oddexecs
 extraroot
