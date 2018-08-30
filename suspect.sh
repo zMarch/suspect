@@ -1,6 +1,6 @@
 #!/bin/bash
-declare libc
-declare proca
+libc=""
+proca=""
 #no readlink or strings any more!
 #we do use ss though.
 #i should probably add a function to prefer ss over netstat and allow the use of both
@@ -15,10 +15,10 @@ echo "=================================="
 
 modulecheck() {
 #god bless you, NSA's autorootkit
-declare kernelhashes
-declare -a modulea
-declare -i r1
-declare moduleb
+kernelhashes=""
+modulea=""
+r1=""
+moduleb=""
 
 echo "[*] Comparing kallsyms and /proc/modules."
 kernelhashes=$(cat /proc/kallsyms | grep '\[' | awk '{ print substr($4,2,length($4)-2) }' | sort -u | tr --delete "\n" | sha256sum)
@@ -29,9 +29,7 @@ else
 fi
 echo "[*] Checking if any modules are missing from disk."
 #i should really turn the below into a function
-moduleb=$(lsmod | cut -d " " -f 1 | tail -n +2)
-IFS=' ' read -r -a modulea <<< $moduleb
-for i in "${modulea[@]}"; do
+echo $moduleb | tr ' ' '\n' | while read i;do
 	modinfo -F filename $i >/dev/null 2>&1
 	r1=$?
 	if [ $r1 -eq "1" ]; then
@@ -45,8 +43,8 @@ fi
 }
 
 preloadcheck() {
-declare -i r1
-declare -i r2
+r1=""
+r2=""
 echo "[*] Investigating ld.so.preload file."
 cat /etc/ld.so.preload 2>/dev/null
 r1=$(echo $?)
@@ -64,10 +62,8 @@ fi
 }
 
 missingproc() {
-declare -a procs
 echo "[*] Checking for processes with deleted executables."
-IFS=' ' read -r -a procs <<< $proca
-for i in "${procs[@]}"; do
+echo $proca | tr ' ' '\n' | while read i;do
 	if file /proc/$i/exe | grep -q deleted; then
 		echo "[!] PID $i is missing its executable."
 		ps -p$i --no-header -o "%a"
@@ -75,10 +71,16 @@ for i in "${procs[@]}"; do
 done
 }
 
+autostart() {
+if [ -f "$HOME/.config/autostart" ]; then
+	echo "[!] $HOME/.config/autostart exists. Investigate"
+fi
+}
+
 changingproc() {
-declare procb
-declare procc
-declare -i procn
+procb=""
+procc=""
+procn=""
 echo "[*] Getting process lists."
 procb=$(ps -wweo "%p")
 echo "[*] Sleeping for three seconds."
@@ -101,7 +103,7 @@ find /var/tmp -executable -type f 2>/dev/null
 }
 
 extraroot() {
-declare -i roots
+roots=""
 echo "[*] Checking the number of root users in /etc/passwd."
 roots=$(cat /etc/passwd | cut -d ":" -f3 | grep --color=never "^0$" | uniq -u | wc -l)
 if [ $roots -gt 1 ]; then
@@ -114,7 +116,7 @@ fi
 }
 
 chattrsia() {
-declare attribs
+attribs=""
 echo "[*] Checking for extended attributes on system binaries..."
 attribs=$(lsattr -a /usr/bin/ /bin/ /sbin/ /usr/sbin/ 2>/dev/null | grep "\-ia\|^s")
 if echo $attribs | grep -q "\-\-"; then
@@ -131,24 +133,19 @@ ps -weFH | grep -v $(getent passwd | grep sh$ | cut -d ":" -f 1 | tr '\n' '|' | 
 }
 
 networks() {
-declare -a neta
-declare netb
+netb=""
 echo "[*] Getting a list of programs with keepalive connections."
 echo "[*] Investigate manually."
 netb=$(ss -taoup | grep keepalive | cut -d \" -f 3 | cut -d "=" -f 2 | cut -d "," -f 1 | sort | uniq)
-IFS=' ' read -r -a neta <<< $netb
-for i in "${neta[@]}"; do
-	ps --no-header -p$i -wwo "%p %u %a"
-done
+echo" $netb"
+#this once did something, but no longer - thanks debian
 }
 
 authkeys() {
-declare -a homedira
-declare homedir
+homedir=""
 echo "[*] Checking the authorized_keys for each user."
 homedir=$(getent passwd | grep sh$ | cut -d ":" -f 6)
-IFS=' ' read -r -a homedira <<< $homedir
-for i in "${homedira[@]}";do
+echo $homedir | tr ' ' '\n' | while read i;do
 	if [ -f "$i/.ssh/authorized_keys" ]; then
 		echo "[*] There's `cat "$i/.ssh/authorized_keys" | wc -l` keys in $i/.ssh/authorized_keys"
 	fi
@@ -156,10 +153,8 @@ done
 }
 
 upxcheck() {
-declare -a procs
 echo "[*] Checking for UPX'd binaries."
-IFS=' ' read -r -a procs <<< $proca
-for i in "${procs[@]}"; do
+echo $proca | tr ' ' '\n' | while read i;do
 	if [ $(cat "/proc/$i/exe" 2>/dev/null | tr -dc '[:print:]' | grep -oi "UPX\!" | wc -l) -gt 1 ] ; then
 		echo "[*] Proc $i is compressed with UPX!"
 		ps --no-header -p$i -wwo "%p %u %a"
@@ -168,13 +163,11 @@ done
 }
 
 ldinfect() {
-declare libs
-declare -a liba
+libs=""
 
 echo "[*] Testing for library-based stat hooks..."
-libs=$(cat /proc/self/maps | grep "xp 0" | grep -v `which cat`| grep -v "00\:00\ 0" | awk -F "fd:0" '{print $2}' | tr -d ' ' | awk -F "[0-9][0-9][0-9]/" '{print "/"$2}')
-IFS=' ' read -r -a liba <<< $libs
-for i in "${liba[@]}"; do
+libs=$(cat /proc/self/maps | grep "xp 0" | grep -v `which cat`| grep -v "00\:00\ 0"  | awk -F ' ' '{print $6}')
+echo $libs | tr ' ' '\n' | while read i;do
         if [ ! -f $i ]; then
                 echo "[!] cat is loading a library that doesn't exist!"
                 echo "[!] Investigate $i further".
@@ -194,6 +187,7 @@ echo "[*] Checking for suspicious behaviour."
 echo "[*] This is not a replacement for a manual audit."
 proca=$(ps -wweo "%p")
 libc=ldd $(which id) | awk -F " " '{print $3}' | grep --color=never libc
+autostart
 modulecheck
 missingproc
 ldinfect
